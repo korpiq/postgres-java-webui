@@ -47,3 +47,8 @@ test {
     useJUnitPlatform()
     jvmArgs '--enable-native-access=ALL-UNNAMED'
 }
+
+task runVerify(type: JavaExec) {
+    mainClass = 'fi.iki.korpiq.pogrejab.VerifyAppStart'
+    classpath = sourceSets.main.runtimeClasspath
+}

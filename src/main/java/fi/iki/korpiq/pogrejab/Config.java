@@ -27,23 +27,23 @@ public class Config {
     }
 
     public String getDatabaseUrl() {
-        return properties.getProperty("db.url");
+        return System.getProperty("DB_URL", properties.getProperty("db.url"));
     }
 
     public String getDatabaseUsername() {
-        return properties.getProperty("db.username");
+        return System.getProperty("DB_USER", properties.getProperty("db.username"));
     }
 
     public String getDatabasePassword() {
-        return properties.getProperty("db.password");
+        return System.getProperty("DB_PASSWORD", properties.getProperty("db.password"));
     }
 
     public String getJwtPrivateKeyPath() {
-        return properties.getProperty("jwt.privateKey");
+        return System.getProperty("JWT_PRIVATE_KEY", properties.getProperty("jwt.privateKey"));
     }
 
     public String getJwtPublicKeyPath() {
-        return properties.getProperty("jwt.publicKey");
+        return System.getProperty("JWT_PUBLIC_KEY", properties.getProperty("jwt.publicKey"));
     }
 
     public long getJwtExpirationMs() {

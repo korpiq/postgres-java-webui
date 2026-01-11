@@ -28,13 +28,13 @@ echo "Keys generated successfully:"
 echo "  Private key: $PRIVATE_KEY"
 echo "  Public key: $PUBLIC_KEY"
 
-# Convert SSH public key to PEM format for easier use in Java
-ssh-keygen -f "$PUBLIC_KEY" -e -m pem > "$KEYS_DIR/jwt_public_key.pem"
-echo "  Public key (PEM): $KEYS_DIR/jwt_public_key.pem"
+# Convert SSH public key to X.509 PEM format for Java compatibility
+ssh-keygen -f "$PUBLIC_KEY" -e -m pkcs8 > "$KEYS_DIR/jwt_public_key.pem"
+echo "  Public key (X.509 PEM): $KEYS_DIR/jwt_public_key.pem"
 
-# Convert private key to PKCS8 format for Java compatibility
-ssh-keygen -p -f "$PRIVATE_KEY" -m pem -N ""
-echo "  Private key converted to PEM format"
+# Convert private key to PKCS#8 format for Java compatibility
+ssh-keygen -p -f "$PRIVATE_KEY" -m pkcs8 -N ""
+echo "  Private key converted to PKCS#8 format"
 
 # Update application.properties with key paths
 echo ""

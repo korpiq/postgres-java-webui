@@ -3,6 +3,7 @@ package fi.iki.korpiq.pogrejab.steps;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import fi.iki.korpiq.pogrejab.App;
 import fi.iki.korpiq.pogrejab.TestContext;
 import io.cucumber.java.After;
 import io.cucumber.java.Before;
@@ -15,6 +16,11 @@ import io.restassured.response.Response;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import java.io.IOException;
+import java.net.ConnectException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyFactory;
@@ -24,6 +30,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
@@ -32,6 +39,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class LoginSteps {
     private final TestContext testContext;
+    private App app;
     private Map<String, String> credentials = new HashMap<>();
 
     public LoginSteps(TestContext testContext) {
@@ -48,13 +56,66 @@ public class LoginSteps {
         postgres.start();
         testContext.setPostgresContainer(postgres);
 
+        // Start the application
+        System.setProperty("DB_URL", postgres.getJdbcUrl());
+        System.setProperty("DB_USER", postgres.getUsername());
+        System.setProperty("DB_PASSWORD", postgres.getPassword());
+        
+        // Ensure JWT keys are pointed to the correct location for tests
+        String projectRoot = System.getProperty("user.dir");
+        System.setProperty("JWT_PRIVATE_KEY", projectRoot + "/.secrets/jwt_key");
+        System.setProperty("JWT_PUBLIC_KEY", projectRoot + "/.secrets/jwt_public_key.pem");
+        
+        app = new App();
+        app.start(0); // Start on a random port
+        int port = app.getPort();
+        testContext.setServerPort(port);
+
         // Set base URI for REST Assured
         RestAssured.baseURI = "http://localhost";
-        // Port will be set dynamically when the server starts
+        RestAssured.port = port;
+
+        waitForAppReady(port);
+    }
+
+    private void waitForAppReady(int port) {
+        HttpClient client = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(1))
+                .build();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:" + port + "/health"))
+                .GET()
+                .build();
+
+        long startTime = System.currentTimeMillis();
+        long timeout = 10000; // 10 seconds
+
+        while (System.currentTimeMillis() - startTime < timeout) {
+            try {
+                HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() == 200) {
+                    return;
+                }
+            } catch (IOException | InterruptedException e) {
+                // Ignore and retry
+            }
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
+        throw new RuntimeException("Application failed to start within 10 seconds");
     }
 
     @After
     public void tearDown() {
+        // Stop the application
+        if (app != null) {
+            app.stop();
+        }
+
         // Stop the Postgres container after each scenario
         if (testContext.getPostgresContainer() != null) {
             testContext.getPostgresContainer().stop();
@@ -201,11 +262,13 @@ public class LoginSteps {
         String publicKeyPath = System.getProperty("user.dir") + "/.secrets/jwt_public_key.pem";
 
         String key = new String(Files.readAllBytes(Paths.get(publicKeyPath)));
-        key = key.replace("-----BEGIN RSA PUBLIC KEY-----", "")
+        String b64Key = key.replace("-----BEGIN PUBLIC KEY-----", "")
+                .replace("-----END PUBLIC KEY-----", "")
+                .replace("-----BEGIN RSA PUBLIC KEY-----", "")
                 .replace("-----END RSA PUBLIC KEY-----", "")
                 .replaceAll("\\s", "");
 
-        byte[] keyBytes = Base64.getDecoder().decode(key);
+        byte[] keyBytes = Base64.getDecoder().decode(b64Key);
         X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
         KeyFactory kf = KeyFactory.getInstance("RSA");
         return (RSAPublicKey) kf.generatePublic(spec);

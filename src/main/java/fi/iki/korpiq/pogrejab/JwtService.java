@@ -55,31 +55,58 @@ public class JwtService {
         String key = new String(Files.readAllBytes(Paths.get(path)));
 
         // Remove PEM headers if present
-        key = key.replace("-----BEGIN PRIVATE KEY-----", "")
+        String b64Key = key.replace("-----BEGIN PRIVATE KEY-----", "")
                 .replace("-----END PRIVATE KEY-----", "")
                 .replace("-----BEGIN RSA PRIVATE KEY-----", "")
                 .replace("-----END RSA PRIVATE KEY-----", "")
                 .replaceAll("\\s", "");
 
-        byte[] keyBytes = Base64.getDecoder().decode(key);
-        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
-        KeyFactory kf = KeyFactory.getInstance("RSA");
-        return (RSAPrivateKey) kf.generatePrivate(spec);
+        byte[] keyBytes = Base64.getDecoder().decode(b64Key);
+        
+        try {
+            PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
+            KeyFactory kf = KeyFactory.getInstance("RSA");
+            return (RSAPrivateKey) kf.generatePrivate(spec);
+        } catch (Exception e) {
+            // If PKCS#8 fails, try PKCS#1
+            if (key.contains("BEGIN RSA PRIVATE KEY")) {
+                return decodePKCS1PrivateKey(keyBytes);
+            }
+            throw e;
+        }
+    }
+
+    private RSAPrivateKey decodePKCS1PrivateKey(byte[] pkcs1Bytes) throws Exception {
+        // Simple PKCS#1 to PKCS#8 conversion for RSA
+        // This is a minimal implementation, in a real app you might use BouncyCastle
+        // But since we want to avoid extra dependencies if possible, we can try to wrap it
+        // Or just use the fact that ssh-keygen can produce PKCS#8 if told so.
+        // Let's try to just use ssh-keygen to convert it to PKCS#8 in the setup script instead.
+        throw new RuntimeException("Private key is in PKCS#1 format. Please convert to PKCS#8 using: openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt -in key.pem -out key.pkcs8");
     }
 
     private RSAPublicKey loadPublicKey(String path) throws Exception {
         String key = new String(Files.readAllBytes(Paths.get(path)));
 
         // Remove PEM headers if present
-        key = key.replace("-----BEGIN PUBLIC KEY-----", "")
+        String b64Key = key.replace("-----BEGIN PUBLIC KEY-----", "")
                 .replace("-----END PUBLIC KEY-----", "")
                 .replace("-----BEGIN RSA PUBLIC KEY-----", "")
                 .replace("-----END RSA PUBLIC KEY-----", "")
                 .replaceAll("\\s", "");
 
-        byte[] keyBytes = Base64.getDecoder().decode(key);
-        X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
-        KeyFactory kf = KeyFactory.getInstance("RSA");
-        return (RSAPublicKey) kf.generatePublic(spec);
+        byte[] keyBytes = Base64.getDecoder().decode(b64Key);
+        
+        try {
+            X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
+            KeyFactory kf = KeyFactory.getInstance("RSA");
+            return (RSAPublicKey) kf.generatePublic(spec);
+        } catch (Exception e) {
+             if (key.contains("BEGIN RSA PUBLIC KEY")) {
+                 // This is likely PKCS#1 public key, Java expects X.509 (SubjectPublicKeyInfo)
+                 throw new RuntimeException("Public key is in PKCS#1 format. Please convert to X.509 using: openssl rsa -in key.pem -pubout -out key.x509.pem");
+             }
+             throw e;
+        }
     }
 }
