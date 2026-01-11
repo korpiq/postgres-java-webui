@@ -9,12 +9,8 @@ case "$1" in
     echo "Starting Postgres instance..."
     docker compose up -d
     echo "Waiting for Postgres to be ready..."
-    docker compose exec -T postgres pg_isready -U appuser -d appdb || sleep 2
+    docker compose exec -T postgres pg_isready -U pogrejab -d pogrejab_db || exit 2
     echo "Postgres is ready!"
-    echo "Database: appdb"
-    echo "User: appuser"
-    echo "Password: apppass"
-    echo "Port: 5432"
     ;;
   stop)
     echo "Stopping Postgres instance..."

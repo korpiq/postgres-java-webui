@@ -1,13 +1,11 @@
-version: '3.8'
-
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     container_name: postgres-java-webui-db
     environment:
-      POSTGRES_DB: appdb
-      POSTGRES_USER: appuser
-      POSTGRES_PASSWORD: apppass
+      POSTGRES_DB: pogrejab_db
+      POSTGRES_USER: pogrejab
+      POSTGRES_PASSWORD: pogreJabPass
     ports:
       - "5432:5432"
     volumes:

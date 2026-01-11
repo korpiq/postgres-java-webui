@@ -2,8 +2,8 @@
 # Copy this file to application.properties and update with actual values
 
 # Database connection settings
-db.url=jdbc:postgresql://localhost:5432/appdb
-db.username=appuser
+db.url=jdbc:postgresql://localhost:5432/pogrejab_db
+db.username=pogrejab_user
 db.password=changeme
 
 # Connection pool settings
