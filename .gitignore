@@ -44,3 +44,9 @@ bin/
 
 # IDEA
 /.idea/
+
+# Configuration files with credentials
+src/main/resources/application.properties
+
+# Docker volumes and data
+postgres_data/
