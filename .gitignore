@@ -48,5 +48,8 @@ bin/
 # Configuration files with credentials
 src/main/resources/application.properties
 
+# JWT signing keys
+.secrets/
+
 # Docker volumes and data
 postgres_data/

@@ -9,3 +9,9 @@ db.password=changeme
 # Connection pool settings
 db.pool.size=10
 db.pool.maxWait=30000
+
+# JWT Configuration
+# Run scripts/generate-jwt-keys.sh to generate keys
+jwt.privateKey=/path/to/keys/jwt_private_key
+jwt.publicKey=/path/to/keys/jwt_public_key.pem
+jwt.expirationMs=3600000

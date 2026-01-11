@@ -4,8 +4,8 @@
     - [x] ensure it creates a user with all privileges and known credentials
     - [x] create configuration file for java app containing the database address and credentials
     - [x] exclude configuration file from version control
-2. [ ] Create a public/private key pair for the Java app to sign JWTs with
-    - [ ] store it in the configuration file
+2. [x] Create a public/private key pair for the Java app to sign JWTs with
+    - [x] store it in the configuration file
 2. [ ] Create Gherkin test for Java API endpoint to login with credentials of a Postgres user
     - [ ] test suite must create and teardown temporary postgres instance
     - [ ] test that the login endpoint returns a valid JWT
