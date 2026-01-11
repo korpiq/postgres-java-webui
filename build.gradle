@@ -19,11 +19,16 @@ dependencies {
     // Cucumber for BDD testing
     testImplementation 'io.cucumber:cucumber-java:7.18.0'
     testImplementation 'io.cucumber:cucumber-junit-platform-engine:7.18.0'
+    testImplementation 'io.cucumber:cucumber-picocontainer:7.18.0'
 
     // Testcontainers for integration testing
-    testImplementation 'org.testcontainers:testcontainers:1.19.8'
-    testImplementation 'org.testcontainers:postgresql:1.19.8'
-    testImplementation 'org.testcontainers:junit-jupiter:1.19.8'
+    testImplementation 'org.testcontainers:testcontainers:1.20.4'
+    testImplementation 'org.testcontainers:postgresql:1.20.4'
+    testImplementation 'org.testcontainers:junit-jupiter:1.20.4'
+
+    // Override docker-java to use newer version with API 1.44+ support
+    testImplementation 'com.github.docker-java:docker-java-api:3.7.0'
+    testImplementation 'com.github.docker-java:docker-java-transport-httpclient5:3.7.0'
 
     // PostgreSQL driver
     implementation 'org.postgresql:postgresql:42.7.3'
@@ -43,4 +48,5 @@ dependencies {
 
 test {
     useJUnitPlatform()
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
 }
