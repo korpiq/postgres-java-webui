@@ -6,13 +6,12 @@
     - [x] exclude configuration file from version control
 2. [x] Create a public/private key pair for the Java app to sign JWTs with
     - [x] store it in the configuration file
-3. [ ] Create Gherkin test for Java API endpoint to login with credentials of a Postgres user
-    - [ ] test suite must create and teardown temporary postgres instance
-    - [ ] test that the login endpoint returns a valid JWT
-        - [ ] containing a session Id
-            - [ ] mapped to a Postgres connection logged in with the given credentials
-        - [ ] signed by a private key that
-4. [ ] Implement Java API endpoint that produces a JWT associating session with Postgres user
+3. [x] Create Gherkin test for Java API endpoint to login with credentials of a Postgres user
+    - [x] test suite must create and teardown temporary postgres instance
+    - [x] test that the login endpoint returns a valid JWT
+        - [x] containing a session Id
+        - [x] signed by a private key that matches the public key
+4. [x] Implement Java API endpoint that produces a JWT associating session with Postgres user
 5. [ ] Create Gherkin test for Java API endpoint for listing databases in the Postgres instance
     - [ ] test should setup and teardown
       - [ ] a database in the test postgres instance
