@@ -181,8 +181,8 @@ const RootPage: React.FC = () => {
         } else if (response.status === 401 || response.status === 403) {
           // Clear all pogrejab cookies?
           document.cookie.split(";").forEach((c) => {
-            const name = c.split("=")[0].trim();
-            if (name.startsWith("pogrejab_")) {
+            const name = c.split("=")[0]?.trim();
+            if (name?.startsWith("pogrejab_")) {
               document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
               // Try to clear with path /db/ too if we know it, but we don't here.
             }
