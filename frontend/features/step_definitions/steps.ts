@@ -1,24 +1,24 @@
-const { Given, When, Then, Before, After } = require('@cucumber/cucumber');
-const { Builder, By, until } = require('selenium-webdriver');
-const chrome = require('selenium-webdriver/chrome');
-const { spawn } = require('child_process');
-const http = require('http');
+import { Given, When, Then, Before, After } from '@cucumber/cucumber';
+import { Builder, By, WebDriver } from 'selenium-webdriver';
+import * as chrome from 'selenium-webdriver/chrome.js';
+import { spawn, ChildProcess } from 'child_process';
+import http from 'http';
 
-let driver;
-let frontendProcess;
+let driver: WebDriver;
+let frontendProcess: ChildProcess;
 const PORT = 3000;
 
 Before({ timeout: 60000 }, async function () {
     // Start frontend
     frontendProcess = spawn('npm', ['start'], {
         cwd: '.',
-        env: { ...process.env, PORT: PORT, BROWSER: 'none' },
+        env: { ...process.env, PORT: PORT.toString(), BROWSER: 'none' },
         shell: true,
         detached: true
     });
 
     // Wait for frontend to be ready
-    await new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => reject(new Error('Frontend start timeout')), 30000);
         const check = () => {
             http.get(`http://localhost:${PORT}`, (res) => {
@@ -50,7 +50,7 @@ After(async function () {
     if (driver) {
         await driver.quit();
     }
-    if (frontendProcess) {
+    if (frontendProcess && frontendProcess.pid) {
         // Kill the process group on Unix
         if (process.platform !== 'win32') {
             process.kill(-frontendProcess.pid);
@@ -68,7 +68,7 @@ When('I access the frontend root page', async function () {
     await driver.get(`http://localhost:${PORT}`);
 });
 
-Then('I should see {string} on the page', async function (text) {
+Then('I should see {string} on the page', async function (text: string) {
     const bodyText = await driver.findElement(By.tagName('body')).getText();
     if (!bodyText.includes(text)) {
         throw new Error(`Expected text "${text}" not found on page`);

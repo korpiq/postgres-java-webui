@@ -2,6 +2,7 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -10,13 +11,20 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "cucumber-js",
+    "test": "cucumber-js --loader ts-node/esm --import features/step_definitions/steps.ts",
     "eject": "react-scripts eject"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^12.5.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.0.6",
+    "@types/react": "^19.2.8",
+    "@types/react-dom": "^19.2.3",
+    "@types/selenium-webdriver": "^4.35.4",
     "chromedriver": "^143.0.4",
-    "selenium-webdriver": "^4.39.0"
+    "selenium-webdriver": "^4.39.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   },
   "browserslist": {
     "production": [
