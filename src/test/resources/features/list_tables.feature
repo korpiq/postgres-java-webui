@@ -8,7 +8,7 @@ Feature: List Tables in a Schema
     And a Postgres user "table_user" with password "table_pass" exists
     And a database "table_test_db" exists
     And the user "table_user" has privilege to see the database "table_test_db"
-    And I am logged in as "table_user" with password "table_pass"
+    And I connect to database "table_test_db" as "table_user" with password "table_pass"
     And a schema "table_test_schema" exists in database "table_test_db"
     And the user "table_user" has privilege to see the schema "table_test_schema" in "table_test_db"
     And a table "allowed_table" exists in schema "table_test_schema" in database "table_test_db"

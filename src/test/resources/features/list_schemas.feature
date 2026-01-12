@@ -8,7 +8,7 @@ Feature: List Schemas in a Database
     And a Postgres user "schema_user" with password "schema_pass" exists
     And a database "schema_test_db" exists
     And the user "schema_user" has privilege to see the database "schema_test_db"
-    And I am logged in as "schema_user" with password "schema_pass"
+    And I connect to database "schema_test_db" as "schema_user" with password "schema_pass"
     And a schema "allowed_schema" exists in database "schema_test_db"
     And a schema "secret_schema" exists in database "schema_test_db"
     And the user "schema_user" has privilege to see the schema "allowed_schema" in "schema_test_db"

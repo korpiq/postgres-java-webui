@@ -42,6 +42,7 @@ public class App {
         // Register routes
         app.post("/api/login", loginHandler::handleLogin);
         app.get("/api/databases", databaseHandler::handleListDatabases);
+        app.post("/api/databases", databaseHandler::handleListDatabases);
         app.get("/api/databases/{dbName}/schemas", databaseHandler::handleListSchemas);
         app.get("/api/databases/{dbName}/schemas/{schemaName}/tables", databaseHandler::handleListTables);
 

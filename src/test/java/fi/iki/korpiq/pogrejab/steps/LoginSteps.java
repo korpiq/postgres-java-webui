@@ -158,8 +158,16 @@ public class LoginSteps {
     @When("I send a POST request to {string} with credentials:")
     public void iSendAPOSTRequestToWithCredentials(String endpoint, io.cucumber.datatable.DataTable dataTable) {
         Map<String, String> credentialsMap = dataTable.asMap(String.class, String.class);
-        credentials = credentialsMap;
+        sendPostRequest(endpoint, credentialsMap);
+    }
 
+    @When("I send a POST request to {string} with:")
+    public void iSendAPOSTRequestToWith(String endpoint, io.cucumber.datatable.DataTable dataTable) {
+        Map<String, String> body = dataTable.asMap(String.class, String.class);
+        sendPostRequest(endpoint, body);
+    }
+
+    private void sendPostRequest(String endpoint, Map<String, String> body) {
         // Set the port if server is running
         if (testContext.getServerPort() > 0) {
             RestAssured.port = testContext.getServerPort();
@@ -167,7 +175,7 @@ public class LoginSteps {
 
         Response response = RestAssured.given()
                 .contentType("application/json")
-                .body(credentialsMap)
+                .body(body)
                 .when()
                 .post(endpoint);
 
@@ -180,6 +188,20 @@ public class LoginSteps {
                 testContext.setJwtToken(token);
             }
         }
+    }
+
+    @And("a cookie {string} should be set with path {string}")
+    public void aCookieShouldBeSetWithPath(String cookieName, String path) {
+        Response response = testContext.getLastResponse();
+        String cookieValue = response.getCookie(cookieName);
+        assertNotNull(cookieValue, "Cookie " + cookieName + " should be set");
+        
+        // Checking the path is a bit harder with RestAssured because getCookie only returns the value.
+        // We can check the Set-Cookie header.
+        String setCookie = response.getHeader("Set-Cookie");
+        assertNotNull(setCookie, "Set-Cookie header should be present");
+        assertTrue(setCookie.contains(cookieName + "="), "Set-Cookie should contain " + cookieName);
+        assertTrue(setCookie.contains("Path=" + path), "Set-Cookie should contain Path=" + path);
     }
 
     @Then("the response status should be {int}")

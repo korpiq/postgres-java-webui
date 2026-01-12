@@ -12,8 +12,40 @@ const getCookie = (name: string) => {
 const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [databases, setDatabases] = useState<string[]>([]);
+  const [selectedDb, setSelectedDb] = useState('');
+  const [step, setStep] = useState<'credentials' | 'databases'>('credentials');
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  const handleFetchDatabases = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    try {
+      const response = await fetch('/api/databases', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setDatabases(data.databases || []);
+        if (data.databases && data.databases.length > 0) {
+          setSelectedDb(data.databases[0]);
+        }
+        setStep('databases');
+      } else {
+        const data = await response.json();
+        setError(data.error || 'Failed to fetch databases');
+      }
+    } catch (err) {
+      setError('An error occurred during database fetch');
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,15 +57,13 @@ const LoginPage: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password, dbName: selectedDb }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        // Set the JWT cookie. In a real app we might want to set secure: true etc.
-        // For simplicity we just set it here.
-        document.cookie = `jwt=${data.token}; path=/; SameSite=Strict`;
-        navigate('/');
+        // Cookie is set by the backend with correct path and name
+        navigate(data.redirect || `/db/${selectedDb}`);
       } else {
         const data = await response.json();
         setError(data.error || 'Login failed');
@@ -43,35 +73,64 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  if (step === 'credentials') {
+    return (
+      <div>
+        <h1>Postgres Java WebUI</h1>
+        <h2>Login</h2>
+        <form onSubmit={handleFetchDatabases}>
+          <div>
+            <label htmlFor="username">Username:</label>
+            <input
+              type="text"
+              id="username"
+              name="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="password">Password:</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          {error && <p style={{ color: 'red' }}>{error}</p>}
+          <button type="submit">List Databases</button>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div>
       <h1>Postgres Java WebUI</h1>
-      <h2>Login</h2>
+      <h2>Select Database</h2>
       <form onSubmit={handleLogin}>
         <div>
-          <label htmlFor="username">Username:</label>
-          <input
-            type="text"
-            id="username"
-            name="username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+          <label htmlFor="database">Database:</label>
+          <select
+            id="database"
+            value={selectedDb}
+            onChange={(e) => setSelectedDb(e.target.value)}
             required
-          />
-        </div>
-        <div>
-          <label htmlFor="password">Password:</label>
-          <input
-            type="password"
-            id="password"
-            name="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          >
+            {databases.map((db) => (
+              <option key={db} value={db}>
+                {db}
+              </option>
+            ))}
+          </select>
         </div>
         {error && <p style={{ color: 'red' }}>{error}</p>}
-        <button type="submit">Login</button>
+        <button type="submit">Connect</button>
+        <button type="button" onClick={() => setStep('credentials')}>Back</button>
       </form>
     </div>
   );
@@ -85,7 +144,22 @@ const RootPage: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const jwt = getCookie('jwt');
+    // On the root page, we don't have a specific dbName, so we don't know which cookie to look for.
+    // However, the requirement says "Modify list databases endpoint to work with either username+password or JWT"
+    // AND "In authenticated frontend pages, look for cookie by name of pogrejab_<dbName> where dbName comes from the URL path"
+    
+    // For the root page, maybe we should just allow ANY pogrejab_* cookie?
+    // Or maybe the root page should use a generic 'jwt' cookie if we still want to list databases while logged in?
+    
+    // Re-reading: "Modify list databases endpoint to work with either username+password or JWT (for listing them while logged in, if possible without reconnecting)"
+    
+    // If I have a session for db1, I should be able to list databases.
+    // Where is the JWT for that session? It's in pogrejab_db1 cookie.
+    
+    const cookies = document.cookie.split(';').map(c => c.trim());
+    const authCookie = cookies.find(c => c.startsWith('pogrejab_'));
+    const jwt = authCookie ? authCookie.split('=')[1] : undefined;
+
     if (!jwt) {
       navigate('/login');
       return;
@@ -104,9 +178,15 @@ const RootPage: React.FC = () => {
         if (response.ok) {
           const data = await response.json();
           setDatabases(data.databases || []);
-        } else if (response.status === 401) {
-          // Redirect to login if unauthorized (session expired or invalid)
-          document.cookie = 'jwt=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        } else if (response.status === 401 || response.status === 403) {
+          // Clear all pogrejab cookies?
+          document.cookie.split(";").forEach((c) => {
+            const name = c.split("=")[0].trim();
+            if (name.startsWith("pogrejab_")) {
+              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+              // Try to clear with path /db/ too if we know it, but we don't here.
+            }
+          });
           navigate('/login');
         } else {
           const data = await response.json();
@@ -154,7 +234,18 @@ const SchemasPage: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const jwt = getCookie('jwt');
+    // Try to find a cookie for THIS specific database first
+    let jwt = getCookie(`pogrejab_${dbName}`);
+    
+    // If not found, try to find ANY pogrejab_ cookie (at root path)
+    if (!jwt) {
+      const cookies = document.cookie.split(';').map(c => c.trim());
+      const authCookie = cookies.find(c => c.startsWith(`pogrejab_${dbName}=`));
+      if (authCookie) {
+        jwt = authCookie.split('=')[1];
+      }
+    }
+
     if (!jwt) {
       navigate('/login');
       return;
@@ -173,8 +264,7 @@ const SchemasPage: React.FC = () => {
         if (response.ok) {
           const data = await response.json();
           setSchemas(data.schemas || []);
-        } else if (response.status === 401) {
-          document.cookie = 'jwt=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        } else if (response.status === 401 || response.status === 403) {
           navigate('/login');
         } else {
           const data = await response.json();

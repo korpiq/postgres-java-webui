@@ -23,41 +23,75 @@ public class DatabaseHandler {
 
     public void handleListDatabases(Context ctx) {
         String authHeader = ctx.header("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new UnauthorizedResponse("Missing or invalid Authorization header");
-        }
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            try {
+                DecodedJWT decodedJWT = jwtService.validateToken(token);
+                String sessionId = decodedJWT.getClaim("sessionId").asString();
+                String username = decodedJWT.getClaim("username").asString();
 
-        String token = authHeader.substring(7);
-        try {
-            DecodedJWT decodedJWT = jwtService.validateToken(token);
-            String sessionId = decodedJWT.getClaim("sessionId").asString();
-            String username = decodedJWT.getClaim("username").asString();
+                Connection conn = loginHandler.getSessionConnections().get(sessionId);
+                if (conn == null || conn.isClosed()) {
+                    throw new UnauthorizedResponse("Session expired or invalid");
+                }
 
-            Connection conn = loginHandler.getSessionConnections().get(sessionId);
-            if (conn == null || conn.isClosed()) {
-                throw new UnauthorizedResponse("Session expired or invalid");
+                listDatabasesForUser(ctx, conn, username);
+            } catch (Exception e) {
+                ctx.status(HttpStatus.UNAUTHORIZED).json(Map.of("error", "Invalid token or session: " + e.getMessage()));
             }
+        } else {
+            // Try with username/password from body (for initial login step)
+            try {
+                Map<String, String> body = ctx.bodyAsClass(Map.class);
+                String username = body.get("username");
+                String password = body.get("password");
 
-            List<String> databases = new ArrayList<>();
-            // Query to list databases that the user has CONNECT privilege on
-            // Note: In Postgres, all users can see all databases in pg_database by default.
-            // The requirement says "test should ensure that user sees database only when given privilege for that."
-            // We can use has_database_privilege() function.
-            String query = "SELECT datname FROM pg_database WHERE datistemplate = false AND has_database_privilege(?, datname, 'CONNECT')";
-            
-            try (java.sql.PreparedStatement pstmt = conn.prepareStatement(query)) {
-                pstmt.setString(1, username);
-                try (ResultSet rs = pstmt.executeQuery()) {
-                    while (rs.next()) {
-                        databases.add(rs.getString("datname"));
+                if (username == null || password == null) {
+                    ctx.status(HttpStatus.BAD_REQUEST).json(Map.of("error", "Username and password are required"));
+                    return;
+                }
+
+                // Temporary connection to list databases
+                String url = loginHandler.getDatabaseUrl();
+                Connection conn = null;
+                try {
+                    // Try with 'postgres' database first as it usually exists and is accessible
+                    String postgresUrl;
+                    int lastSlashIndex = url.lastIndexOf("/");
+                    int questionMarkIndex = url.indexOf("?", lastSlashIndex);
+                    if (questionMarkIndex != -1) {
+                        postgresUrl = url.substring(0, lastSlashIndex + 1) + "postgres" + url.substring(questionMarkIndex);
+                    } else {
+                        postgresUrl = url.substring(0, lastSlashIndex + 1) + "postgres";
                     }
+                    conn = java.sql.DriverManager.getConnection(postgresUrl, username, password);
+                } catch (Exception e) {
+                    // Fallback to original URL
+                    conn = java.sql.DriverManager.getConnection(url, username, password);
+                }
+
+                try (Connection finalConn = conn) {
+                    listDatabasesForUser(ctx, finalConn, username);
+                }
+            } catch (Exception e) {
+                ctx.status(HttpStatus.UNAUTHORIZED).json(Map.of("error", "Authentication failed: " + e.getMessage()));
+            }
+        }
+    }
+
+    private void listDatabasesForUser(Context ctx, Connection conn, String username) throws java.sql.SQLException {
+        List<String> databases = new ArrayList<>();
+        String query = "SELECT datname FROM pg_database WHERE datistemplate = false AND has_database_privilege(?, datname, 'CONNECT')";
+
+        try (java.sql.PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setString(1, username);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    databases.add(rs.getString("datname"));
                 }
             }
-
-            ctx.status(HttpStatus.OK).json(Map.of("databases", databases));
-        } catch (Exception e) {
-            ctx.status(HttpStatus.UNAUTHORIZED).json(Map.of("error", "Invalid token or session: " + e.getMessage()));
         }
+        ctx.status(HttpStatus.OK).json(Map.of("databases", databases));
     }
 
     public void handleListSchemas(Context ctx) {
@@ -78,28 +112,10 @@ public class DatabaseHandler {
                 throw new UnauthorizedResponse("Session expired or invalid");
             }
 
-            // Since a JDBC connection is to a specific database, we can only list schemas of the current database.
-            // If the requested dbName is NOT the one we are connected to, we need to reconnect.
+            // Verify the connection is to the correct database
             if (!dbName.equals(conn.getCatalog())) {
-                String password = loginHandler.getSessionPasswords().get(sessionId);
-                if (password == null) {
-                    throw new UnauthorizedResponse("Session password not found, please login again");
-                }
-                
-                String baseUrl = loginHandler.getDatabaseUrl();
-                // Replace the database part of the URL. 
-                // e.g., jdbc:postgresql://localhost:5432/postgres -> jdbc:postgresql://localhost:5432/dbName
-                String newUrl = baseUrl.substring(0, baseUrl.lastIndexOf("/") + 1) + dbName;
-                
-                try {
-                    Connection newConn = java.sql.DriverManager.getConnection(newUrl, username, password);
-                    conn.close();
-                    loginHandler.getSessionConnections().put(sessionId, newConn);
-                    conn = newConn;
-                } catch (java.sql.SQLException e) {
-                    ctx.status(HttpStatus.BAD_REQUEST).json(Map.of("error", "Failed to connect to database " + dbName + ": " + e.getMessage()));
-                    return;
-                }
+                ctx.status(HttpStatus.FORBIDDEN).json(Map.of("error", "Session is not associated with database " + dbName));
+                return;
             }
 
             List<String> schemas = new ArrayList<>();
@@ -143,23 +159,8 @@ public class DatabaseHandler {
 
             // Ensure we are connected to the correct database
             if (!dbName.equals(conn.getCatalog())) {
-                String password = loginHandler.getSessionPasswords().get(sessionId);
-                if (password == null) {
-                    throw new UnauthorizedResponse("Session password not found, please login again");
-                }
-
-                String baseUrl = loginHandler.getDatabaseUrl();
-                String newUrl = baseUrl.substring(0, baseUrl.lastIndexOf("/") + 1) + dbName;
-
-                try {
-                    Connection newConn = java.sql.DriverManager.getConnection(newUrl, username, password);
-                    conn.close();
-                    loginHandler.getSessionConnections().put(sessionId, newConn);
-                    conn = newConn;
-                } catch (java.sql.SQLException e) {
-                    ctx.status(HttpStatus.BAD_REQUEST).json(Map.of("error", "Failed to connect to database " + dbName + ": " + e.getMessage()));
-                    return;
-                }
+                ctx.status(HttpStatus.FORBIDDEN).json(Map.of("error", "Session is not associated with database " + dbName));
+                return;
             }
 
             List<String> tables = new ArrayList<>();

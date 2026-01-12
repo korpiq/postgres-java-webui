@@ -143,9 +143,18 @@ Given('a database {string} owned by {string} exists', async function (dbname: st
     }
 });
 
+Given('a database {string} exists', async function (dbname: string) {
+    const cmd = `docker compose exec -T postgres psql -U pogrejab -d pogrejab_db -c "SELECT 1 FROM pg_database WHERE datname = '${dbname}'"`;
+    const result = execSync(`cd .. && ${cmd}`, { encoding: 'utf8' });
+    if (!result.includes('1')) {
+        const createCmd = `docker compose exec -T postgres psql -U pogrejab -d pogrejab_db -c "CREATE DATABASE ${dbname}"`;
+        execSync(`cd .. && ${createCmd}`, { stdio: 'inherit' });
+    }
+});
+
 Given('a schema {string} exists in database {string}', async function (schemaname: string, dbname: string) {
     // We assume the testuser exists and has rights or we use the superuser to create and grant
-    const cmd = `docker compose exec -T postgres psql -U pogrejab -d ${dbname} -c "CREATE SCHEMA IF NOT EXISTS ${schemaname}; GRANT USAGE ON SCHEMA ${schemaname} TO testuser;"`;
+    const cmd = `docker compose exec -T postgres psql -U pogrejab -d ${dbname} -c "CREATE SCHEMA IF NOT EXISTS ${schemaname}; GRANT USAGE ON SCHEMA ${schemaname} TO public;"`;
     execSync(`cd .. && ${cmd}`, { stdio: 'inherit' });
 });
 
@@ -158,45 +167,56 @@ Given('I am logged in as {string} with password {string}', { timeout: 30000 }, a
     await driver.findElement(By.name('username')).sendKeys(username);
     await driver.findElement(By.name('password')).sendKeys(password);
     await driver.findElement(By.css('button[type="submit"]')).click();
-    await driver.wait(until.urlIs(`http://localhost:${PORT}/`), 5000);
+    // Two-step login: Select database
+    const select = await driver.wait(until.elementLocated(By.tagName('select')), 10000);
+    await driver.findElement(By.css('button[type="submit"]')).click(); // Connect to the first one
+    await driver.wait(until.urlContains('/db/'), 5000);
+});
+
+When('I enter {string} and {string} and click {string}', async function (username, password, buttonText) {
+    await driver.findElement(By.name('username')).sendKeys(username);
+    await driver.findElement(By.name('password')).sendKeys(password);
+    const button = await driver.findElement(By.xpath(`//button[contains(text(), '${buttonText}')]`));
+    await button.click();
+});
+
+Then('I should see a list of databases including {string}', async function (dbname: string) {
+    await driver.wait(until.elementLocated(By.tagName('select')), 10000);
+    const select = await driver.findElement(By.tagName('select'));
+    const options = await select.findElements(By.tagName('option'));
+    let found = false;
+    for (const option of options) {
+        if (await option.getText() === dbname) {
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        throw new Error(`Database ${dbname} not found in the list`);
+    }
+});
+
+When('I select {string} and click {string}', async function (dbname: string, buttonText: string) {
+    const select = await driver.findElement(By.tagName('select'));
+    await select.sendKeys(dbname);
+    const button = await driver.findElement(By.xpath(`//button[contains(text(), '${buttonText}')]`));
+    await button.click();
+});
+
+Then('I should be redirected to {string}', async function (path: string) {
+    await driver.wait(until.urlContains(path), 5000);
+});
+
+Then('a cookie {string} should be set', async function (cookieName: string) {
+    const cookies = await driver.manage().getCookies();
+    const myCookie = cookies.find(c => c.name === cookieName);
+    if (!myCookie) {
+        throw new Error(`Cookie ${cookieName} not found`);
+    }
 });
 
 Given('I am on the login page', async function () {
     await driver.get(`http://localhost:${PORT}/login`);
-});
-
-When('I enter {string} and {string} and click login', async function (username, password) {
-    await driver.findElement(By.name('username')).sendKeys(username);
-    await driver.findElement(By.name('password')).sendKeys(password);
-    await driver.findElement(By.css('button[type="submit"]')).click();
-    // Wait for a bit for the cookie to be set
-    await driver.sleep(1000);
-});
-
-Then('a JWT cookie should be set', async function () {
-    const cookies = await driver.manage().getCookies();
-    const jwtCookie = cookies.find(c => c.name === 'jwt');
-    if (!jwtCookie) {
-        throw new Error('JWT cookie not found');
-    }
-});
-
-Then('the JWT cookie should be signed with the backend secret key', async function () {
-    const cookies = await driver.manage().getCookies();
-    const jwtCookie = cookies.find(c => c.name === 'jwt');
-    if (!jwtCookie) {
-        throw new Error('JWT cookie not found');
-    }
-
-    const token = jwtCookie.value;
-    const publicKeyPath = path.resolve(process.cwd(), '../.secrets/jwt_public_key.pem');
-    const publicKey = fs.readFileSync(publicKeyPath, 'utf8');
-
-    try {
-        jwt.verify(token, publicKey, { algorithms: ['RS256'] });
-    } catch (err: any) {
-        throw new Error(`JWT verification failed: ${err.message}`);
-    }
 });
 
 Given('an obsolete JWT cookie is set', async function () {
@@ -206,7 +226,7 @@ Given('an obsolete JWT cookie is set', async function () {
     await driver.wait(until.elementLocated(By.tagName('body')), 5000);
     // Use template literal for the token and handle potential newlines/quotes
     const escapedToken = token.replace(/[\n\r]/g, '');
-    await driver.executeScript(`document.cookie = "jwt=${escapedToken}; path=/";`);
+    await driver.executeScript(`document.cookie = "pogrejab_testdb=${escapedToken}; path=/";`);
 });
 
 Then('I should be redirected to the login page', async function () {

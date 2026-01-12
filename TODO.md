@@ -36,9 +36,18 @@
 17. [x] Add feature test and implementation for an API endpoint that lists tables in a database schema
     - [x] again use JWT from Authorization header for session db connection
     - [x] again ensure that user does not see tables they have no permission to access
-18. [ ] Add feature test and implementation for a frontend page `/db/<dbName>/<schemaName>` that lists tables in that schema from the API.
-19. [ ] Add information whether the user has permission to create new database to the database list response from API.
+18. [ ] Add feature test and implementation for a frontend page `/db/<dbName>/schema/<schemaName>` that lists tables in that schema from the API.
+19. [ ] In order to avoid saving passwords in memory, let's require selecting database as a step in login process: Login -> List DBs -> Select DB -> Finalize Session
+    - [ ] Add a step to login process that lists databases the user is allowed to connect to and lets them pick one
+    - [ ] Modify list databases endpoint to work with either username+password or JWT (for listing them while logged in, if possible without reconnecting)
+    - [ ] Modify login endpoint to take the dbName to connect to
+    - [ ] use name `pogrejab_<dbName>` for the cookie set upon login
+    - [ ] use path `/db/<dbName>` for the cookie set upon login
+    - [ ] Redirect from login to `/db/<dbName>`
+    - [ ] In authenticated frontend pages, look for cookie by name of `pogrejab_<dbName>` where `dbName` comes from the URL path
+    - [ ] In backend, always check that the session is associated with the database that is accessed
+20. [ ] Add information whether the user has permission to create new database to the database list response from API.
     - [ ] Adjust existing code and tests to work correctly after the change.
-20. [ ] Add feature test and implementation for API endpoint to create a database
-21. [ ] Add feature test and implementation for a form on frontend database list page to create a database
+21. [ ] Add feature test and implementation for API endpoint to create a database
+22. [ ] Add feature test and implementation for a form on frontend database list page to create a database
     - [ ] only shown to users who have the privilege to create a database

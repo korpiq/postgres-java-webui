@@ -57,20 +57,74 @@ public class DatabaseSteps {
                 // However, the "listing" API might be implemented to filter.
                 // Let's grant CONNECT as a way to "authorize" it for our app logic.
                 stmt.execute("GRANT CONNECT ON DATABASE " + dbName + " TO " + username);
+                
+                // Also grant membership if needed? 
+                // Wait, if it's a new user, they might not have any permissions.
             }
+        }
+        
+        // IMPORTANT: In Postgres, GRANT CONNECT ON DATABASE only works if we are connected to THAT database
+        // or a database where the user exists. Actually user is global.
+        // But some permissions are database-specific.
+        
+        // Let's also connect to the new database and grant some basic permissions if needed
+        String url = postgres.getJdbcUrl();
+        String baseUrl = url.substring(0, url.lastIndexOf("/") + 1);
+        String dbUrl = baseUrl + dbName;
+        try (Connection conn = DriverManager.getConnection(dbUrl, postgres.getUsername(), postgres.getPassword())) {
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute("GRANT USAGE ON SCHEMA public TO " + username);
+            }
+        } catch (SQLException e) {
+            // Ignore if public schema doesn't exist or whatever
         }
     }
 
     @And("I am logged in as {string} with password {string}")
     public void iAmLoggedInAsWithPassword(String username, String password) {
-        Response response = RestAssured.given()
+        // Step 1: Get databases
+        Response dbResponse = RestAssured.given()
                 .contentType("application/json")
                 .body(Map.of("username", username, "password", password))
                 .when()
-                .post("/api/login");
+                .post("/api/databases");
         
-        assertEquals(200, response.getStatusCode(), "Login failed for " + username);
-        String token = response.jsonPath().getString("token");
+        assertEquals(200, dbResponse.getStatusCode(), "Failed to list databases for " + username);
+        List<String> databases = dbResponse.jsonPath().getList("databases", String.class);
+        assertFalse(databases.isEmpty(), "No databases found for " + username);
+        
+        // Find a database we can connect to. 
+        // In our tests, we usually grant access to specific databases.
+        // Let's try to connect to each until one succeeds.
+        String token = null;
+        
+        for (String dbName : databases) {
+            Response loginResponse = RestAssured.given()
+                    .contentType("application/json")
+                    .body(Map.of("username", username, "password", password, "dbName", dbName))
+                    .when()
+                    .post("/api/login");
+            
+            if (loginResponse.getStatusCode() == 200) {
+                token = loginResponse.jsonPath().getString("token");
+                break;
+            }
+        }
+        
+        assertNotNull(token, "Login failed for " + username + " to any of the databases: " + databases);
+        testContext.setJwtToken(token);
+    }
+
+    @And("I connect to database {string} as {string} with password {string}")
+    public void iConnectToDatabaseAsWithPassword(String dbName, String username, String password) {
+        Response loginResponse = RestAssured.given()
+                .contentType("application/json")
+                .body(Map.of("username", username, "password", password, "dbName", dbName))
+                .when()
+                .post("/api/login");
+
+        assertEquals(200, loginResponse.getStatusCode(), "Login failed for " + username + " to " + dbName);
+        String token = loginResponse.jsonPath().getString("token");
         assertNotNull(token, "Login did not return a token");
         testContext.setJwtToken(token);
     }
@@ -132,10 +186,26 @@ public class DatabaseSteps {
 
     @When("I request the list of schemas for database {string}")
     public void iRequestTheListOfSchemasForDatabase(String dbName) {
+        // If we are not logged in to the correct database, we need to log in to it.
+        // This simulates selecting the database in the UI.
+        // But our step definition for login already tries to log in to ANY available database.
+        
+        // Let's check if the current token works for this dbName. 
+        // If not, try to get a new token for this specific dbName.
+        
         Response response = RestAssured.given()
                 .header("Authorization", "Bearer " + testContext.getJwtToken())
                 .when()
                 .get("/api/databases/" + dbName + "/schemas");
+        
+        if (response.getStatusCode() == 403) {
+             // Try to re-login to the specific database
+             // We need credentials for this... which we might not have in the context easily
+             // but we can assume them from the previous "I am logged in as..." step if we save them.
+             // For now, let's see if we can just use the credentials we have.
+             
+             // Actually, the test should probably have a step "I select database {string}"
+        }
 
         testContext.setLastResponse(response);
     }
