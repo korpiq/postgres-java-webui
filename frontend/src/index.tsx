@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, Navigate, useParams, Link } from 'react-router-dom';
 
 const getCookie = (name: string) => {
   const value = `; ${document.cookie}`;
@@ -135,10 +135,81 @@ const RootPage: React.FC = () => {
       ) : (
         <ul>
           {databases.map((db) => (
-            <li key={db}>{db}</li>
+            <li key={db}>
+              <Link to={`/db/${db}`}>{db}</Link>
+            </li>
           ))}
         </ul>
       )}
+    </div>
+  );
+};
+
+const SchemasPage: React.FC = () => {
+  const { dbName } = useParams<{ dbName: string }>();
+  const [loading, setLoading] = useState(true);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [schemas, setSchemas] = useState<string[]>([]);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const jwt = getCookie('jwt');
+    if (!jwt) {
+      navigate('/login');
+      return;
+    }
+
+    setAuthenticated(true);
+
+    const fetchSchemas = async () => {
+      try {
+        const response = await fetch(`/api/databases/${dbName}/schemas`, {
+          headers: {
+            'Authorization': `Bearer ${jwt}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setSchemas(data.schemas || []);
+        } else if (response.status === 401) {
+          document.cookie = 'jwt=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+          navigate('/login');
+        } else {
+          const data = await response.json();
+          setError(data.error || 'Failed to fetch schemas');
+        }
+      } catch (err) {
+        setError('An error occurred while fetching schemas');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (dbName) {
+      fetchSchemas();
+    }
+  }, [navigate, dbName]);
+
+  if (loading) return <div>Loading...</div>;
+  if (!authenticated) return null;
+
+  return (
+    <div>
+      <h1>Postgres Java WebUI</h1>
+      <h2>Schemas in {dbName}</h2>
+      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {schemas.length === 0 ? (
+        <p>No schemas found or access denied.</p>
+      ) : (
+        <ul>
+          {schemas.map((schema) => (
+            <li key={schema}>{schema}</li>
+          ))}
+        </ul>
+      )}
+      <button onClick={() => navigate('/')}>Back to Databases</button>
     </div>
   );
 };
@@ -149,6 +220,7 @@ const App: React.FC = () => {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<RootPage />} />
+        <Route path="/db/:dbName" element={<SchemasPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

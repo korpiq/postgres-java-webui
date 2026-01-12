@@ -95,14 +95,31 @@ When('I access the frontend root page', async function () {
     await driver.get(`http://localhost:${PORT}`);
 });
 
-Then('I should see {string} on the page', async function (text: string) {
-    const bodyText = await driver.findElement(By.tagName('body')).getText();
-    if (!bodyText.includes(text)) {
-        throw new Error(`Expected text "${text}" not found on page`);
+When('I click on the link for database {string}', { timeout: 30000 }, async function (dbname: string) {
+    const link = await driver.wait(until.elementLocated(By.linkText(dbname)), 10000);
+    await driver.executeScript("arguments[0].click();", link);
+    // Wait for the URL to change to the expected path
+    await driver.wait(until.urlContains(`/db/${dbname}`), 10000);
+});
+
+Then('I should see {string} on the page', { timeout: 30000 }, async function (text: string) {
+    await driver.wait(until.elementLocated(By.tagName('body')), 5000);
+    const body = await driver.findElement(By.tagName('body'));
+    try {
+        await driver.wait(async () => {
+            const bodyText = await body.getText();
+            return bodyText.includes(text);
+        }, 5000, `Expected text "${text}" not found on page after timeout`);
+    } catch (err) {
+        const logs = await driver.manage().logs().get('browser');
+        console.log('Browser logs:', JSON.stringify(logs, null, 2));
+        const bodyText = await body.getText();
+        console.log('Page body text:', bodyText);
+        throw err;
     }
 });
 
-Given('a temporary Postgres instance is running', async function () {
+Given('a temporary Postgres instance is running', { timeout: 60000 }, async function () {
     // We rely on the docker-compose instance started by setup-db.sh or similar
     try {
         execSync('cd .. && ./scripts/setup-db.sh start', { stdio: 'pipe' });
@@ -126,7 +143,17 @@ Given('a database {string} owned by {string} exists', async function (dbname: st
     }
 });
 
-Given('I am logged in as {string} with password {string}', async function (username, password) {
+Given('a schema {string} exists in database {string}', async function (schemaname: string, dbname: string) {
+    // We assume the testuser exists and has rights or we use the superuser to create and grant
+    const cmd = `docker compose exec -T postgres psql -U pogrejab -d ${dbname} -c "CREATE SCHEMA IF NOT EXISTS ${schemaname}; GRANT USAGE ON SCHEMA ${schemaname} TO testuser;"`;
+    execSync(`cd .. && ${cmd}`, { stdio: 'inherit' });
+});
+
+When('I access the schemas page for {string}', { timeout: 30000 }, async function (dbname: string) {
+    await driver.get(`http://localhost:${PORT}/db/${dbname}`);
+});
+
+Given('I am logged in as {string} with password {string}', { timeout: 30000 }, async function (username, password) {
     await driver.get(`http://localhost:${PORT}/login`);
     await driver.findElement(By.name('username')).sendKeys(username);
     await driver.findElement(By.name('password')).sendKeys(password);
