@@ -19,7 +19,7 @@
     - [x] from command-line
     - [x] in frontend test setup and teardown
     - [x] initially showing an empty front page
-8. [ ] Create a Gherkin test to verify that our webapp answers at a local port
+8. [x] Create a Gherkin test to verify that our webapp answers at a local port
 9. [ ] Create a Gherkin test for a username+password login page
     - [ ] test must verify that the endpoint sets a JWT cookie
 10. [ ] Implement the login page as specified by above test.
