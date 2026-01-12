@@ -93,12 +93,18 @@ Then('I should see {string} on the page', async function (text: string) {
 });
 
 Given('a temporary Postgres instance is running', async function () {
-    // In frontend-only work, we assume the backend handles this or we mock it.
-    // For now, we'll just assume it's true if the environment is set up.
+    // We rely on the docker-compose instance started by setup-db.sh or similar
+    try {
+        execSync('cd .. && ./scripts/setup-db.sh start', { stdio: 'pipe' });
+    } catch (e) {
+        // If it fails, maybe it's already running or docker is not available,
+        // but we'll try to proceed anyway.
+    }
 });
 
 Given('a Postgres user {string} with password {string} exists', async function (username: string, password: string) {
-    // Placeholder for frontend tests
+    const cmd = `docker compose exec -T postgres psql -U pogrejab -d pogrejab_db -c "DO \\$\\$ BEGIN IF NOT EXISTS (SELECT FROM pg_catalog.pg_user WHERE usename = '${username}') THEN CREATE USER ${username} WITH PASSWORD '${password}'; END IF; END \\$\\$;"`;
+    execSync(`cd .. && ${cmd}`, { stdio: 'inherit' });
 });
 
 Given('I am on the login page', async function () {
@@ -109,6 +115,8 @@ When('I enter {string} and {string} and click login', async function (username, 
     await driver.findElement(By.name('username')).sendKeys(username);
     await driver.findElement(By.name('password')).sendKeys(password);
     await driver.findElement(By.css('button[type="submit"]')).click();
+    // Wait for a bit for the cookie to be set
+    await driver.sleep(1000);
 });
 
 Then('a JWT cookie should be set', async function () {

@@ -22,7 +22,7 @@
 8. [x] Create a Gherkin test to verify that our webapp answers at a local port
 9. [x] Create a Gherkin test for a username+password login page
     - [x] test must verify with the public key from .secrets that the endpoint sets a JWT cookie signed by the backend secret key
-10. [ ] Implement the login page as specified by above test.
+10. [x] Implement the login page as specified by above test.
 11. [ ] Create a Gherkin test to verify that accessing webapp root page without valid JWT goes to login page
 12. [ ] Create a Gherkin test to verify that accessing webapp root page with a valid JWT lists databases the logged in user has access to.
 13. [ ] Implement webapp root page so that above tests pass.
