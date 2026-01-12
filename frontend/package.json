@@ -12,7 +12,7 @@
     "start": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "cucumber-js --loader ts-node/esm --import features/step_definitions/steps.ts"
+    "test": "cucumber-js --loader ts-node/esm --import features/step_definitions/steps.ts --format pretty"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^12.5.0",
