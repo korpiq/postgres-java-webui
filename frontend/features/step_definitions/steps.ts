@@ -75,6 +75,16 @@ After(async function () {
             frontendProcess.kill();
         }
     }
+
+    // Cleanup specific test user and database if they were created
+    try {
+        const cleanupDbCmd = `docker compose exec -T postgres psql -U pogrejab -d pogrejab_db -c "DROP DATABASE IF EXISTS testdb"`;
+        execSync(`cd .. && ${cleanupDbCmd}`, { stdio: 'pipe' });
+        const cleanupUserCmd = `docker compose exec -T postgres psql -U pogrejab -d pogrejab_db -c "DROP USER IF EXISTS testuser"`;
+        execSync(`cd .. && ${cleanupUserCmd}`, { stdio: 'pipe' });
+    } catch (e) {
+        // Ignore cleanup errors
+    }
 });
 
 Given('the frontend application is started', async function () {
@@ -105,6 +115,23 @@ Given('a temporary Postgres instance is running', async function () {
 Given('a Postgres user {string} with password {string} exists', async function (username: string, password: string) {
     const cmd = `docker compose exec -T postgres psql -U pogrejab -d pogrejab_db -c "DO \\$\\$ BEGIN IF NOT EXISTS (SELECT FROM pg_catalog.pg_user WHERE usename = '${username}') THEN CREATE USER ${username} WITH PASSWORD '${password}'; END IF; END \\$\\$;"`;
     execSync(`cd .. && ${cmd}`, { stdio: 'inherit' });
+});
+
+Given('a database {string} owned by {string} exists', async function (dbname: string, username: string) {
+    const cmd = `docker compose exec -T postgres psql -U pogrejab -d pogrejab_db -c "SELECT 1 FROM pg_database WHERE datname = '${dbname}'"`;
+    const result = execSync(`cd .. && ${cmd}`, { encoding: 'utf8' });
+    if (!result.includes('1')) {
+        const createCmd = `docker compose exec -T postgres psql -U pogrejab -d pogrejab_db -c "CREATE DATABASE ${dbname} OWNER ${username}"`;
+        execSync(`cd .. && ${createCmd}`, { stdio: 'inherit' });
+    }
+});
+
+Given('I am logged in as {string} with password {string}', async function (username, password) {
+    await driver.get(`http://localhost:${PORT}/login`);
+    await driver.findElement(By.name('username')).sendKeys(username);
+    await driver.findElement(By.name('password')).sendKeys(password);
+    await driver.findElement(By.css('button[type="submit"]')).click();
+    await driver.wait(until.urlIs(`http://localhost:${PORT}/`), 5000);
 });
 
 Given('I am on the login page', async function () {

@@ -24,5 +24,6 @@
     - [x] test must verify with the public key from .secrets that the endpoint sets a JWT cookie signed by the backend secret key
 10. [x] Implement the login page as specified by above test.
 11. [x] Create a Gherkin test to verify that accessing webapp root page without valid JWT goes to login page
-12. [ ] Create a Gherkin test to verify that accessing webapp root page with a valid JWT lists databases the logged in user has access to.
+12. [x] Create a Gherkin test to verify that accessing webapp root page with a valid JWT lists databases the logged in user has access to.
+    - [x] frontend test suite should setup and teardown specific user and database for use in this and future tests.
 13. [ ] Implement webapp root page so that above tests pass.
