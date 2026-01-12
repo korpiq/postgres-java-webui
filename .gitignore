@@ -54,3 +54,5 @@ src/main/resources/application.properties
 # Docker volumes and data
 postgres_data/
 node_modules/
+*.log
+*.pid

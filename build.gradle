@@ -52,3 +52,8 @@ task runVerify(type: JavaExec) {
     mainClass = 'fi.iki.korpiq.pogrejab.VerifyAppStart'
     classpath = sourceSets.main.runtimeClasspath
 }
+
+task copyRuntimeLibs(type: Copy) {
+    into "build/libs/runtime"
+    from configurations.runtimeClasspath
+}

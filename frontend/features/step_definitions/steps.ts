@@ -1,7 +1,7 @@
-import { Given, When, Then, Before, After } from '@cucumber/cucumber';
+import { Given, When, Then, Before, After, BeforeAll, AfterAll } from '@cucumber/cucumber';
 import { Builder, By, WebDriver, until } from 'selenium-webdriver';
 import * as chrome from 'selenium-webdriver/chrome.js';
-import { spawn, ChildProcess } from 'child_process';
+import { spawn, ChildProcess, execSync } from 'child_process';
 import http from 'http';
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
@@ -10,6 +10,16 @@ import path from 'path';
 let driver: WebDriver;
 let frontendProcess: ChildProcess;
 const PORT = 3000;
+
+BeforeAll({ timeout: 120000 }, async function () {
+    console.log('Starting backend for all tests...');
+    execSync('cd .. && ./scripts/start-backend.sh', { stdio: 'inherit' });
+});
+
+AfterAll(async function () {
+    console.log('Stopping backend after all tests...');
+    execSync('cd .. && ./scripts/stop-backend.sh', { stdio: 'inherit' });
+});
 
 Before({ timeout: 60000 }, async function () {
     // Start frontend
