@@ -29,3 +29,7 @@
 13. [x] Implement webapp root page so that above tests pass.
     - [x] use database listing endpoint of the API
       - [x] pass JWT from cookie as Authorization header.
+14. [x] Add feature test and implementation for an API endpoint that lists schemas in a database
+   - [x] require JWT in Authorization header, use db connection of associated session to limit to schemas seen by that user.
+15. [ ] Add feature test and implementation for a frontend page '/db/<dbName>' that lists schemas of database `dbName` from above API endpoint.
+16. [ ] Modify front page so that each database name `dbName` is a link to `/db/<dbName>` page.

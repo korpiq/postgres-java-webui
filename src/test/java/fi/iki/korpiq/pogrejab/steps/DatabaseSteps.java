@@ -98,4 +98,59 @@ public class DatabaseSteps {
         List<String> databases = response.jsonPath().getList("databases", String.class);
         assertFalse(databases.contains(unexpectedDb), "Response contains " + unexpectedDb);
     }
+
+    @And("a schema {string} exists in database {string}")
+    public void aSchemaExistsInDatabase(String schemaName, String dbName) throws SQLException {
+        PostgreSQLContainer<?> postgres = testContext.getPostgresContainer();
+        // To create a schema in a specific database, we need to connect to that database
+        String url = postgres.getJdbcUrl();
+        // Replace the default database name (usually 'test') with dbName
+        String baseUrl = url.substring(0, url.lastIndexOf("/") + 1);
+        String dbUrl = baseUrl + dbName;
+        
+        try (Connection conn = DriverManager.getConnection(dbUrl, postgres.getUsername(), postgres.getPassword())) {
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute("CREATE SCHEMA " + schemaName);
+            }
+        }
+    }
+
+    @And("the user {string} has privilege to see the schema {string} in {string}")
+    public void theUserHasPrivilegeToSeeTheSchemaIn(String username, String schemaName, String dbName) throws SQLException {
+        PostgreSQLContainer<?> postgres = testContext.getPostgresContainer();
+        String url = postgres.getJdbcUrl();
+        String baseUrl = url.substring(0, url.lastIndexOf("/") + 1);
+        String dbUrl = baseUrl + dbName;
+
+        try (Connection conn = DriverManager.getConnection(dbUrl, postgres.getUsername(), postgres.getPassword())) {
+            try (Statement stmt = conn.createStatement()) {
+                // Grant USAGE on schema to user
+                stmt.execute("GRANT USAGE ON SCHEMA " + schemaName + " TO " + username);
+            }
+        }
+    }
+
+    @When("I request the list of schemas for database {string}")
+    public void iRequestTheListOfSchemasForDatabase(String dbName) {
+        Response response = RestAssured.given()
+                .header("Authorization", "Bearer " + testContext.getJwtToken())
+                .when()
+                .get("/api/databases/" + dbName + "/schemas");
+
+        testContext.setLastResponse(response);
+    }
+
+    @And("the response should contain schema {string}")
+    public void theResponseShouldContainSchema(String expectedSchema) {
+        Response response = testContext.getLastResponse();
+        List<String> schemas = response.jsonPath().getList("schemas", String.class);
+        assertTrue(schemas.contains(expectedSchema), "Response does not contain schema " + expectedSchema);
+    }
+
+    @And("the response should not contain schema {string}")
+    public void theResponseShouldNotContainSchema(String unexpectedSchema) {
+        Response response = testContext.getLastResponse();
+        List<String> schemas = response.jsonPath().getList("schemas", String.class);
+        assertFalse(schemas.contains(unexpectedSchema), "Response contains schema " + unexpectedSchema);
+    }
 }

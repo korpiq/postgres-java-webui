@@ -16,11 +16,13 @@ public class LoginHandler {
     private final JwtService jwtService;
     private final String databaseUrl;
     private final Map<String, Connection> sessionConnections;
+    private final Map<String, String> sessionPasswords;
 
     public LoginHandler(JwtService jwtService, String databaseUrl) {
         this.jwtService = jwtService;
         this.databaseUrl = databaseUrl;
         this.sessionConnections = new ConcurrentHashMap<>();
+        this.sessionPasswords = new ConcurrentHashMap<>();
     }
 
     public void handleLogin(Context ctx) {
@@ -45,6 +47,7 @@ public class LoginHandler {
 
                 // Store the connection mapped to the session
                 sessionConnections.put(sessionId, connection);
+                sessionPasswords.put(sessionId, password);
 
                 ctx.status(HttpStatus.OK)
                    .json(Map.of("token", token));
@@ -76,5 +79,13 @@ public class LoginHandler {
 
     public Map<String, Connection> getSessionConnections() {
         return sessionConnections;
+    }
+
+    public Map<String, String> getSessionPasswords() {
+        return sessionPasswords;
+    }
+
+    public String getDatabaseUrl() {
+        return databaseUrl;
     }
 }
