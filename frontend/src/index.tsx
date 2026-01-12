@@ -104,6 +104,10 @@ const RootPage: React.FC = () => {
         if (response.ok) {
           const data = await response.json();
           setDatabases(data.databases || []);
+        } else if (response.status === 401) {
+          // Redirect to login if unauthorized (session expired or invalid)
+          document.cookie = 'jwt=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+          navigate('/login');
         } else {
           const data = await response.json();
           setError(data.error || 'Failed to fetch databases');

@@ -172,6 +172,16 @@ Then('the JWT cookie should be signed with the backend secret key', async functi
     }
 });
 
+Given('an obsolete JWT cookie is set', async function () {
+    const token = execSync('cd .. && ./gradlew -q run -PmainClass=fi.iki.korpiq.pogrejab.GenerateInvalidJwt', { encoding: 'utf8' }).trim();
+    // Navigate to the domain first before setting cookie
+    await driver.get(`http://localhost:${PORT}/login`);
+    await driver.wait(until.elementLocated(By.tagName('body')), 5000);
+    // Use template literal for the token and handle potential newlines/quotes
+    const escapedToken = token.replace(/[\n\r]/g, '');
+    await driver.executeScript(`document.cookie = "jwt=${escapedToken}; path=/";`);
+});
+
 Then('I should be redirected to the login page', async function () {
     await driver.wait(until.urlContains('/login'), 5000);
     const url = await driver.getCurrentUrl();
