@@ -121,4 +121,67 @@ public class DatabaseHandler {
             ctx.status(HttpStatus.UNAUTHORIZED).json(Map.of("error", "Invalid token or session: " + e.getMessage()));
         }
     }
+
+    public void handleListTables(Context ctx) {
+        String authHeader = ctx.header("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new UnauthorizedResponse("Missing or invalid Authorization header");
+        }
+
+        String dbName = ctx.pathParam("dbName");
+        String schemaName = ctx.pathParam("schemaName");
+        String token = authHeader.substring(7);
+        try {
+            DecodedJWT decodedJWT = jwtService.validateToken(token);
+            String sessionId = decodedJWT.getClaim("sessionId").asString();
+            String username = decodedJWT.getClaim("username").asString();
+
+            Connection conn = loginHandler.getSessionConnections().get(sessionId);
+            if (conn == null || conn.isClosed()) {
+                throw new UnauthorizedResponse("Session expired or invalid");
+            }
+
+            // Ensure we are connected to the correct database
+            if (!dbName.equals(conn.getCatalog())) {
+                String password = loginHandler.getSessionPasswords().get(sessionId);
+                if (password == null) {
+                    throw new UnauthorizedResponse("Session password not found, please login again");
+                }
+
+                String baseUrl = loginHandler.getDatabaseUrl();
+                String newUrl = baseUrl.substring(0, baseUrl.lastIndexOf("/") + 1) + dbName;
+
+                try {
+                    Connection newConn = java.sql.DriverManager.getConnection(newUrl, username, password);
+                    conn.close();
+                    loginHandler.getSessionConnections().put(sessionId, newConn);
+                    conn = newConn;
+                } catch (java.sql.SQLException e) {
+                    ctx.status(HttpStatus.BAD_REQUEST).json(Map.of("error", "Failed to connect to database " + dbName + ": " + e.getMessage()));
+                    return;
+                }
+            }
+
+            List<String> tables = new ArrayList<>();
+            // Query to list tables in the given schema that the user has SELECT privilege on
+            // We use has_table_privilege()
+            // In Postgres, tables are in pg_class, joined with pg_namespace for schema name.
+            // Relkind 'r' is for ordinary tables.
+            String query = "SELECT tablename FROM pg_tables WHERE schemaname = ? AND has_table_privilege(?, quote_ident(schemaname) || '.' || quote_ident(tablename), 'SELECT')";
+
+            try (java.sql.PreparedStatement pstmt = conn.prepareStatement(query)) {
+                pstmt.setString(1, schemaName);
+                pstmt.setString(2, username);
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    while (rs.next()) {
+                        tables.add(rs.getString("tablename"));
+                    }
+                }
+            }
+
+            ctx.status(HttpStatus.OK).json(Map.of("tables", tables));
+        } catch (Exception e) {
+            ctx.status(HttpStatus.UNAUTHORIZED).json(Map.of("error", "Invalid token or session: " + e.getMessage()));
+        }
+    }
 }

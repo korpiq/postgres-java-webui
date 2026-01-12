@@ -33,11 +33,12 @@
     - [x] require JWT in Authorization header, use db connection of associated session to limit to schemas seen by that user.
 15. [x] Add feature test and implementation for a frontend page '/db/<dbName>' that lists schemas of database `dbName` from above API endpoint.
 16. [x] Modify front page so that each database name `dbName` is a link to `/db/<dbName>` page.
-17. [ ] Add feature test and implementation for an API endpoint that lists tables in a database schema
-    - [ ] again use JWT from Authorization header for session db connection
-    - [ ] again ensure that user does not see tables they have no permission to access
+17. [x] Add feature test and implementation for an API endpoint that lists tables in a database schema
+    - [x] again use JWT from Authorization header for session db connection
+    - [x] again ensure that user does not see tables they have no permission to access
 18. [ ] Add feature test and implementation for a frontend page `/db/<dbName>/<schemaName>` that lists tables in that schema from the API.
-19. [ ]
+19. [ ] Add information whether the user has permission to create new database to the database list response from API.
+    - [ ] Adjust existing code and tests to work correctly after the change.
 20. [ ] Add feature test and implementation for API endpoint to create a database
-20. [ ] Add feature test and implementation for a form on frontend database list page to create a database
+21. [ ] Add feature test and implementation for a form on frontend database list page to create a database
     - [ ] only shown to users who have the privilege to create a database

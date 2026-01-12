@@ -153,4 +153,56 @@ public class DatabaseSteps {
         List<String> schemas = response.jsonPath().getList("schemas", String.class);
         assertFalse(schemas.contains(unexpectedSchema), "Response contains schema " + unexpectedSchema);
     }
+
+    @And("a table {string} exists in schema {string} in database {string}")
+    public void aTableExistsInSchemaInDatabase(String tableName, String schemaName, String dbName) throws SQLException {
+        PostgreSQLContainer<?> postgres = testContext.getPostgresContainer();
+        String url = postgres.getJdbcUrl();
+        String baseUrl = url.substring(0, url.lastIndexOf("/") + 1);
+        String dbUrl = baseUrl + dbName;
+
+        try (Connection conn = DriverManager.getConnection(dbUrl, postgres.getUsername(), postgres.getPassword())) {
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute("CREATE TABLE " + schemaName + "." + tableName + " (id SERIAL PRIMARY KEY)");
+            }
+        }
+    }
+
+    @And("the user {string} has privilege to see the table {string} in schema {string} in database {string}")
+    public void theUserHasPrivilegeToSeeTheTableInSchemaInDatabase(String username, String tableName, String schemaName, String dbName) throws SQLException {
+        PostgreSQLContainer<?> postgres = testContext.getPostgresContainer();
+        String url = postgres.getJdbcUrl();
+        String baseUrl = url.substring(0, url.lastIndexOf("/") + 1);
+        String dbUrl = baseUrl + dbName;
+
+        try (Connection conn = DriverManager.getConnection(dbUrl, postgres.getUsername(), postgres.getPassword())) {
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute("GRANT SELECT ON " + schemaName + "." + tableName + " TO " + username);
+            }
+        }
+    }
+
+    @When("I request the list of tables for schema {string} in database {string}")
+    public void iRequestTheListOfTablesForSchemaInDatabase(String schemaName, String dbName) {
+        Response response = RestAssured.given()
+                .header("Authorization", "Bearer " + testContext.getJwtToken())
+                .when()
+                .get("/api/databases/" + dbName + "/schemas/" + schemaName + "/tables");
+
+        testContext.setLastResponse(response);
+    }
+
+    @And("the response should contain table {string}")
+    public void theResponseShouldContainTable(String expectedTable) {
+        Response response = testContext.getLastResponse();
+        List<String> tables = response.jsonPath().getList("tables", String.class);
+        assertTrue(tables.contains(expectedTable), "Response does not contain table " + expectedTable);
+    }
+
+    @And("the response should not contain table {string}")
+    public void theResponseShouldNotContainTable(String unexpectedTable) {
+        Response response = testContext.getLastResponse();
+        List<String> tables = response.jsonPath().getList("tables", String.class);
+        assertFalse(tables.contains(unexpectedTable), "Response contains table " + unexpectedTable);
+    }
 }

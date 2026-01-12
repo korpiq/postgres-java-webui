@@ -43,6 +43,7 @@ public class App {
         app.post("/api/login", loginHandler::handleLogin);
         app.get("/api/databases", databaseHandler::handleListDatabases);
         app.get("/api/databases/{dbName}/schemas", databaseHandler::handleListSchemas);
+        app.get("/api/databases/{dbName}/schemas/{schemaName}/tables", databaseHandler::handleListTables);
 
         // Health check endpoint
         app.get("/health", ctx -> ctx.result("OK"));
