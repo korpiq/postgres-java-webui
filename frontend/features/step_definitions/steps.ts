@@ -144,3 +144,11 @@ Then('the JWT cookie should be signed with the backend secret key', async functi
         throw new Error(`JWT verification failed: ${err.message}`);
     }
 });
+
+Then('I should be redirected to the login page', async function () {
+    await driver.wait(until.urlContains('/login'), 5000);
+    const url = await driver.getCurrentUrl();
+    if (!url.includes('/login')) {
+        throw new Error(`Expected to be on login page, but was at ${url}`);
+    }
+});

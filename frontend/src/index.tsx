@@ -1,10 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
+import { BrowserRouter, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 
-const App: React.FC = () => {
+const getCookie = (name: string) => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift();
+  return undefined;
+};
+
+const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,6 +33,7 @@ const App: React.FC = () => {
         // Set the JWT cookie. In a real app we might want to set secure: true etc.
         // For simplicity we just set it here.
         document.cookie = `jwt=${data.token}; path=/; SameSite=Strict`;
+        navigate('/');
       } else {
         const data = await response.json();
         setError(data.error || 'Login failed');
@@ -36,6 +46,7 @@ const App: React.FC = () => {
   return (
     <div>
       <h1>Postgres Java WebUI</h1>
+      <h2>Login</h2>
       <form onSubmit={handleLogin}>
         <div>
           <label htmlFor="username">Username:</label>
@@ -63,6 +74,44 @@ const App: React.FC = () => {
         <button type="submit">Login</button>
       </form>
     </div>
+  );
+};
+
+const RootPage: React.FC = () => {
+  const [loading, setLoading] = useState(true);
+  const [authenticated, setAuthenticated] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const jwt = getCookie('jwt');
+    if (!jwt) {
+      navigate('/login');
+    } else {
+      setAuthenticated(true);
+    }
+    setLoading(false);
+  }, [navigate]);
+
+  if (loading) return <div>Loading...</div>;
+  if (!authenticated) return null;
+
+  return (
+    <div>
+      <h1>Postgres Java WebUI</h1>
+      <p>Welcome to the main page! (Database listing coming soon)</p>
+    </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/" element={<RootPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 };
 
