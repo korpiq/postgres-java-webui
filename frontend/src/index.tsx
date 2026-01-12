@@ -114,22 +114,30 @@ const LoginPage: React.FC = () => {
       <h2>Select Database</h2>
       <form onSubmit={handleLogin}>
         <div>
-          <label htmlFor="database">Database:</label>
-          <select
-            id="database"
-            value={selectedDb}
-            onChange={(e) => setSelectedDb(e.target.value)}
-            required
-          >
+          <p>Database:</p>
+          <ul id="database-list" style={{ listStyleType: 'none', padding: 0 }}>
             {databases.map((db) => (
-              <option key={db} value={db}>
+              <li
+                key={db}
+                onClick={() => setSelectedDb(db)}
+                style={{
+                  padding: '8px',
+                  margin: '4px 0',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  backgroundColor: selectedDb === db ? '#e0e0e0' : 'transparent',
+                  fontWeight: selectedDb === db ? 'bold' : 'normal'
+                }}
+                className={selectedDb === db ? 'selected' : ''}
+              >
                 {db}
-              </option>
+              </li>
             ))}
-          </select>
+          </ul>
         </div>
         {error && <p style={{ color: 'red' }}>{error}</p>}
-        <button type="submit">Connect</button>
+        <button type="submit" disabled={!selectedDb}>Connect</button>
         <button type="button" onClick={() => setStep('credentials')}>Back</button>
       </form>
     </div>

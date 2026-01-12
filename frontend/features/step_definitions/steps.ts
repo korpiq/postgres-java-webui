@@ -168,8 +168,8 @@ Given('I am logged in as {string} with password {string}', { timeout: 30000 }, a
     await driver.findElement(By.name('password')).sendKeys(password);
     await driver.findElement(By.css('button[type="submit"]')).click();
     // Two-step login: Select database
-    const select = await driver.wait(until.elementLocated(By.tagName('select')), 10000);
-    await driver.findElement(By.css('button[type="submit"]')).click(); // Connect to the first one
+    await driver.wait(until.elementLocated(By.id('database-list')), 10000);
+    await driver.findElement(By.css('button[type="submit"]')).click(); // Connect to the first one (already selected by default in component)
     await driver.wait(until.urlContains('/db/'), 5000);
 });
 
@@ -181,12 +181,12 @@ When('I enter {string} and {string} and click {string}', async function (usernam
 });
 
 Then('I should see a list of databases including {string}', async function (dbname: string) {
-    await driver.wait(until.elementLocated(By.tagName('select')), 10000);
-    const select = await driver.findElement(By.tagName('select'));
-    const options = await select.findElements(By.tagName('option'));
+    await driver.wait(until.elementLocated(By.id('database-list')), 10000);
+    const list = await driver.findElement(By.id('database-list'));
+    const items = await list.findElements(By.tagName('li'));
     let found = false;
-    for (const option of options) {
-        if (await option.getText() === dbname) {
+    for (const item of items) {
+        if (await item.getText() === dbname) {
             found = true;
             break;
         }
@@ -197,8 +197,19 @@ Then('I should see a list of databases including {string}', async function (dbna
 });
 
 When('I select {string} and click {string}', async function (dbname: string, buttonText: string) {
-    const select = await driver.findElement(By.tagName('select'));
-    await select.sendKeys(dbname);
+    const list = await driver.findElement(By.id('database-list'));
+    const items = await list.findElements(By.tagName('li'));
+    let found = false;
+    for (const item of items) {
+        if (await item.getText() === dbname) {
+            await item.click();
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        throw new Error(`Database ${dbname} not found in the list to select`);
+    }
     const button = await driver.findElement(By.xpath(`//button[contains(text(), '${buttonText}')]`));
     await button.click();
 });
