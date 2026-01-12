@@ -56,3 +56,8 @@ postgres_data/
 node_modules/
 *.log
 *.pid
+*.js
+*.d.ts
+*.js.map
+*.d.ts.map
+!vite.config.ts

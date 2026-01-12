@@ -2,8 +2,8 @@
   // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
     // File Layout
-    // "rootDir": "./src",
-    // "outDir": "./dist",
+    "rootDir": ".",
+    "outDir": "build",
 
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
@@ -42,5 +42,5 @@
     "skipLibCheck": true,
     "noEmit": true,
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src", "features", "vite.config.ts"]
 }
