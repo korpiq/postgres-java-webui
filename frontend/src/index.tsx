@@ -80,16 +80,42 @@ const LoginPage: React.FC = () => {
 const RootPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
+  const [databases, setDatabases] = useState<string[]>([]);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
     const jwt = getCookie('jwt');
     if (!jwt) {
       navigate('/login');
-    } else {
-      setAuthenticated(true);
+      return;
     }
-    setLoading(false);
+    
+    setAuthenticated(true);
+
+    const fetchDatabases = async () => {
+      try {
+        const response = await fetch('/api/databases', {
+          headers: {
+            'Authorization': `Bearer ${jwt}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setDatabases(data.databases || []);
+        } else {
+          const data = await response.json();
+          setError(data.error || 'Failed to fetch databases');
+        }
+      } catch (err) {
+        setError('An error occurred while fetching databases');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDatabases();
   }, [navigate]);
 
   if (loading) return <div>Loading...</div>;
@@ -98,7 +124,17 @@ const RootPage: React.FC = () => {
   return (
     <div>
       <h1>Postgres Java WebUI</h1>
-      <p>Welcome to the main page! (Database listing coming soon)</p>
+      {error && <p style={{ color: 'red' }}>{error}</p>}
+      <h2>Your Databases</h2>
+      {databases.length === 0 ? (
+        <p>No databases found or access denied.</p>
+      ) : (
+        <ul>
+          {databases.map((db) => (
+            <li key={db}>{db}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 };

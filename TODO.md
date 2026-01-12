@@ -26,4 +26,6 @@
 11. [x] Create a Gherkin test to verify that accessing webapp root page without valid JWT goes to login page
 12. [x] Create a Gherkin test to verify that accessing webapp root page with a valid JWT lists databases the logged in user has access to.
     - [x] frontend test suite should setup and teardown specific user and database for use in this and future tests.
-13. [ ] Implement webapp root page so that above tests pass.
+13. [x] Implement webapp root page so that above tests pass.
+    - [x] use database listing endpoint of the API
+      - [x] pass JWT from cookie as Authorization header.
