@@ -37,6 +37,8 @@ public class DatabaseSteps {
                 postgres.getPassword())) {
             try (Statement stmt = conn.createStatement()) {
                 stmt.execute("CREATE DATABASE " + dbName);
+                // Revoke CONNECT from PUBLIC so it's not visible by default in our test logic
+                stmt.execute("REVOKE CONNECT ON DATABASE " + dbName + " FROM PUBLIC");
             }
         }
     }

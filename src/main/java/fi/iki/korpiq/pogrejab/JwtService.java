@@ -51,6 +51,12 @@ public class JwtService {
         return UUID.randomUUID().toString();
     }
 
+    public com.auth0.jwt.interfaces.DecodedJWT validateToken(String token) {
+        return JWT.require(algorithm)
+                .build()
+                .verify(token);
+    }
+
     private RSAPrivateKey loadPrivateKey(String path) throws Exception {
         String key = new String(Files.readAllBytes(Paths.get(path)));
 

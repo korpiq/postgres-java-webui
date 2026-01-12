@@ -9,6 +9,7 @@ public class App {
     private final Config config;
     private final JwtService jwtService;
     private final LoginHandler loginHandler;
+    private final DatabaseHandler databaseHandler;
     private Javalin app;
 
     public App() {
@@ -19,12 +20,14 @@ public class App {
                 config.getJwtExpirationMs()
         );
         this.loginHandler = new LoginHandler(jwtService, config.getDatabaseUrl());
+        this.databaseHandler = new DatabaseHandler(jwtService, loginHandler);
     }
 
     public App(Config config, JwtService jwtService, LoginHandler loginHandler) {
         this.config = config;
         this.jwtService = jwtService;
         this.loginHandler = loginHandler;
+        this.databaseHandler = new DatabaseHandler(jwtService, loginHandler);
     }
 
     public void start() {
@@ -38,6 +41,7 @@ public class App {
 
         // Register routes
         app.post("/api/login", loginHandler::handleLogin);
+        app.get("/api/databases", databaseHandler::handleListDatabases);
 
         // Health check endpoint
         app.get("/health", ctx -> ctx.result("OK"));

@@ -12,14 +12,9 @@
         - [x] containing a session Id
         - [x] signed by a private key that matches the public key
 4. [x] Implement Java API endpoint that produces a JWT associating session with Postgres user
-5. [ ] Create Gherkin test for Java API endpoint for listing databases in the Postgres instance
-    - [ ] test should setup and teardown
-      - [ ] a database in the test postgres instance
-      - [ ] a user in the test postgres instance
-      - [ ] a privilege for the user to see the database in postgres
-    - [ ] test should ensure that user sees database only when given privilege for that.
-6. [ ] Implement above API endpoint
-    - [ ] ensure it passes the test
+5. [x] Create Gherkin test for Java API endpoint for listing databases in the Postgres instance
+6. [x] Implement above API endpoint
+    - [x] ensure it passes the test
 7. [ ] Create a Gherkin test to verify that a webapp answers at a local port
 8. [ ] Create a minimal empty ReactJs app to make previous test pass
 9. [ ] Create a Gherkin test for a username+password login page
